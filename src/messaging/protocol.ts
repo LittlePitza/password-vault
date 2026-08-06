@@ -6,7 +6,11 @@ import {
   vaultItemSchema,
 } from '../core/model/item';
 import type { ItemSummary, VaultItem } from '../core/model/item';
-import type { VaultSnapshot } from '../core/vault/vaultService';
+import type {
+  AutofillCandidate,
+  AutofillCredential,
+  VaultSnapshot,
+} from '../core/vault/vaultService';
 import type { VaultError } from '../core/vault/errors';
 import type { BackupError, BackupFile, MergeReport } from '../core/vault/backup';
 
@@ -58,6 +62,19 @@ export const requestSchema = z.discriminatedUnion('type', [
    * cruza este mensaje: el worker sólo necesita saber que hay que limpiar, no qué.
    */
   z.object({ type: z.literal('clipboard/scheduleClear') }),
+
+  /**
+   * Autocompletado. Fíjate en lo que **no** llevan estos dos mensajes: la URL de la
+   * página.
+   *
+   * Es deliberado y es la garantía central de todo el autocompletado. Si el content
+   * script dijera en qué página está, bastaría con que una página hostil le enviara al
+   * worker un `{ type: 'autofill/fill', url: 'https://mi-banco.com' }` para que le
+   * entregásemos esa credencial. El host lo deriva el worker del `sender` que rellena el
+   * propio navegador, y eso no se puede falsificar desde la página.
+   */
+  z.object({ type: z.literal('autofill/candidates') }),
+  z.object({ type: z.literal('autofill/fill'), id: z.uuid() }),
 ]);
 
 export type Request = z.infer<typeof requestSchema>;
@@ -83,6 +100,8 @@ export interface ResponseMap {
   'vault/exportBackup': BackupFile;
   'vault/importBackup': MergeReport;
   'clipboard/scheduleClear': null;
+  'autofill/candidates': readonly AutofillCandidate[];
+  'autofill/fill': AutofillCredential;
 }
 
 /**

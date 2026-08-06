@@ -3,7 +3,7 @@ import { VaultRepository } from '@/src/core/vault/vaultRepository';
 import { VaultService } from '@/src/core/vault/vaultService';
 import { cryptoIdGenerator, systemClock } from '@/src/core/ports';
 import { corruptData } from '@/src/core/crypto/errors';
-import { type VaultError, unexpected } from '@/src/core/vault/errors';
+import { type VaultError, itemNotFound, unexpected } from '@/src/core/vault/errors';
 import type { BackupError } from '@/src/core/vault/backup';
 import { BrowserVaultStorage } from '@/src/platform/browserStorage';
 import { BrowserSessionStore } from '@/src/platform/browserSession';
@@ -54,14 +54,14 @@ export default defineBackground(() => {
     }
   });
 
-  browser.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+  browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
     // Se responde de forma asíncrona: hay que devolver `true` para que el canal siga
     // abierto hasta que llegue `sendResponse`.
     //
     // El `catch` es una red de seguridad, no el manejo principal: `route` ya captura lo
     // suyo. Está aquí para garantizar por construcción que **toda** rama termina llamando
     // a `sendResponse`, incluso si un día se cuela un fallo antes de ese `try`.
-    void route(message)
+    void route(message, senderUrl(sender))
       .then(sendResponse)
       .catch((cause: unknown) => {
         console.error('[vault] fallo al enrutar el mensaje', cause);
@@ -71,7 +71,24 @@ export default defineBackground(() => {
   });
 });
 
-async function route(message: unknown): Promise<AnyResponse> {
+/**
+ * De dónde salió el mensaje, según el navegador.
+ *
+ * `sender.url` lo rellena Chrome, no el remitente, y por eso es la única fuente admisible
+ * para decidir a qué sitio se le entrega una credencial. Es la URL del **frame** concreto
+ * que envió el mensaje: si un banco vive dentro de un iframe, lo que cuenta es el origen
+ * del iframe y no el de la página que lo embebe, que es justo lo correcto — la política
+ * de mismo origen ya impide a la página de fuera leer dentro.
+ *
+ * Para los mensajes del popup esto será una URL `chrome-extension://`, que no casa con
+ * ningún dominio guardado. El autocompletado desde el popup simplemente no devuelve nada,
+ * sin necesidad de comprobarlo aparte.
+ */
+function senderUrl(sender: { url?: string }): string | null {
+  return sender.url ?? null;
+}
+
+async function route(message: unknown, pageUrl: string | null): Promise<AnyResponse> {
   // El content script vive dentro de páginas potencialmente hostiles: nada de lo que
   // llegue por aquí se da por bien formado, aunque venga de nuestra propia extensión.
   const parsed = requestSchema.safeParse(message);
@@ -81,7 +98,7 @@ async function route(message: unknown): Promise<AnyResponse> {
 
   let response: AnyResponse;
   try {
-    response = await handle(parsed.data);
+    response = await handle(parsed.data, pageUrl);
   } catch (cause) {
     /*
      * Un caso de uso lanzó en vez de devolver su `Result`: cuota de `storage.local`
@@ -113,7 +130,7 @@ async function route(message: unknown): Promise<AnyResponse> {
   return response;
 }
 
-async function handle(request: Request): Promise<AnyResponse> {
+async function handle(request: Request, pageUrl: string | null): Promise<AnyResponse> {
   switch (request.type) {
     case 'vault/snapshot':
       return success(await service.snapshot());
@@ -193,5 +210,21 @@ async function handle(request: Request): Promise<AnyResponse> {
     case 'clipboard/scheduleClear':
       scheduleClipboardClear();
       return success();
+
+    case 'autofill/candidates': {
+      // Sin origen verificable no hay a qué emparejar. Se devuelve la lista vacía en vez
+      // de un error: para el content script «aquí no tengo nada» es la respuesta útil.
+      if (pageUrl === null) return success([]);
+
+      const result = await service.autofillCandidates(pageUrl);
+      return result.ok ? success(result.value) : failure(result.error);
+    }
+
+    case 'autofill/fill': {
+      if (pageUrl === null) return failure(itemNotFound(request.id));
+
+      const result = await service.autofillCredential(request.id, pageUrl);
+      return result.ok ? success(result.value) : failure(result.error);
+    }
   }
 }

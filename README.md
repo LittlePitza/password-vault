@@ -8,22 +8,18 @@ Extensión Manifest V3 construida con [WXT](https://wxt.dev), React 19 y TypeScr
 ## Estado
 
 Funciona de extremo a extremo: crear la bóveda, guardar credenciales, notas y tarjetas,
-buscar, copiar con borrado automático del portapapeles, bloqueo por inactividad, código de
-respaldo y exportación/importación cifrada.
+buscar, autocompletar formularios, copiar con borrado automático del portapapeles, cambiar
+la contraseña maestra, bloqueo por inactividad, código de respaldo y exportación/importación
+cifrada.
 
-Lo que **todavía no** hace, y conviene saber antes de instalarla:
+Lo que **todavía no** hace:
 
-- **No autocompleta formularios.** El flujo es abrir el popup, buscar y copiar. El
-  manifest declara `activeTab`, `scripting`, `tabs` y `<all_urls>` anticipando esa función,
-  pero no hay content script que los use. Antes de publicarla hay que implementarlo o
-  retirar esos permisos: pedir `<all_urls>` sin código que lo justifique es motivo
-  frecuente de rechazo en la Chrome Web Store.
-- **No se puede cambiar la contraseña maestra desde la interfaz.** El caso de uso existe y
-  está probado (`VaultService.changeMasterPassword`), pero ninguna pantalla lo invoca aún.
 - **No hay pantalla de ajustes.** El bloqueo automático (15 min) y el borrado del
   portapapeles (30 s) están fijos en `src/core/policy.ts`.
-- **No hay tests de interfaz.** Los 158 tests cubren núcleo, criptografía y adaptadores;
-  ningún componente de React está cubierto.
+- **No hay tests de interfaz.** Los 216 tests cubren núcleo, criptografía, emparejamiento
+  de dominios, adaptadores y manipulación del DOM; ningún componente de React está cubierto.
+- **No detecta formularios de registro** para ofrecer guardar una credencial nueva. Hay que
+  crearla a mano desde el popup.
 
 ## Modelo de seguridad
 
@@ -51,6 +47,26 @@ código de respaldo, y los items nunca se re-cifran — sólo cambian 32 bytes d
   Sobrevive a que MV3 mate el service worker, y bloquear la borra de verdad.
 - Los mensajes se **validan con zod al llegar** al worker, aunque vengan de la propia
   extensión.
+
+### Autocompletado
+
+Es la única parte que ejecuta código dentro de sitios que no controlamos, así que está
+construida suponiendo que la página es hostil:
+
+- **La página no decide qué dominio es.** Los mensajes de autocompletado no llevan URL: el
+  service worker la deduce del `sender` que rellena el navegador. Sin esto bastaría con que
+  una página pidiera «dame la credencial de mi-banco.com».
+- **El emparejamiento se comprueba otra vez al entregar el secreto**, no sólo al listar.
+  Conocer el id de una credencial no sirve de nada desde otro dominio.
+- **Se compara por etiquetas de dominio, nunca por subcadenas.** `evil-github.com` y
+  `github.com.atacante.net` no son GitHub. Está fijado en `tests/unit/urlMatch.test.ts`.
+- **La lista que se dibuja en la página no contiene contraseñas**, sólo título y usuario.
+  El secreto viaja únicamente después de que el usuario elija una entrada concreta.
+- **Nada se rellena solo.** Hace falta un clic sobre nuestro propio botón, y los campos
+  invisibles se descartan: un formulario de acceso oculto es la forma conocida de hacer que
+  un gestor entregue credenciales sin que el usuario vea nada.
+- El widget vive en un **shadow DOM cerrado**, así que el CSS del sitio no puede ocultarlo
+  ni deformarlo, y el paquete inyectado no incluye nada de criptografía.
 
 ### Lo que este diseño no puede hacer
 
@@ -89,11 +105,19 @@ src/core/        Núcleo puro: cripto, modelo, casos de uso. Sin APIs del navega
   crypto/          scrypt, AES-GCM, jerarquía de llaves, código de respaldo
   vault/           servicio, repositorio, respaldo, búsqueda, política de contraseñas
   model/           esquemas zod — los tipos se infieren de ellos, no se declaran aparte
-src/platform/    Adaptadores: storage, sesión, alarmas, portapapeles
+src/platform/    Adaptadores: storage, sesión, alarmas, portapapeles, relleno de formularios
 src/messaging/   Protocolo tipado entre el worker y la interfaz
 src/ui/          Componentes, hooks y sistema de diseño
-entrypoints/     background (service worker), popup, onboarding, offscreen
+entrypoints/     background (service worker), popup, content, onboarding, offscreen
 ```
+
+### Permisos
+
+La extensión pide cuatro: `storage`, `alarms`, `idle` y `offscreen`. No pide
+`host_permissions`, ni `scripting`, ni `activeTab`, ni `tabs` — el content script se declara
+con sus `matches`, que en MV3 ya son la autorización para inyectarlo, y el origen de cada
+mensaje llega en `sender.url` sin necesidad de `tabs`. El razonamiento completo está
+comentado en `wxt.config.ts`.
 
 La separación no es decorativa: una regla de ESLint impide que `src/core/**` importe nada
 del navegador. Por eso el núcleo se prueba entero en Node, sin extensión de por medio, y

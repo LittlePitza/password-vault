@@ -172,17 +172,11 @@ export function mergeBackup(
   };
 }
 
-export function describeBackupError(error: BackupError): string {
-  switch (error.kind) {
-    case 'not-a-backup':
-      return error.detail;
-    case 'unsupported-backup-version':
-      return `Este respaldo usa el formato v${String(error.found)}, más nuevo que el que entiende esta versión de la extensión.`;
-    case 'wrong-password':
-      return 'La contraseña no abre este archivo de respaldo.';
-    case 'corrupt-data':
-      return 'El archivo de respaldo está dañado.';
-    case 'unsupported-version':
-      return 'Formato de respaldo no soportado.';
-  }
-}
+/*
+ * El texto de estos errores vive en `errors.ts`, junto al del resto de la bóveda.
+ *
+ * No es un capricho de organización: este módulo arrastra zod, scrypt y AES, y el content
+ * script sólo necesitaba formatear un error para acabar inyectando todo eso en cada página
+ * que visita el usuario. Manteniendo aquí sólo lo que de verdad cifra, `errors.ts` queda
+ * sin dependencias y el paquete que entra en las páginas se reduce a lo imprescindible.
+ */

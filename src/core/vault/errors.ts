@@ -1,5 +1,7 @@
 import { type CryptoError, describeCryptoError } from '../crypto/errors';
-import { type BackupError, describeBackupError } from './backup';
+// Sólo el tipo: importar un valor de `backup.ts` traería zod, scrypt y AES detrás, y este
+// módulo lo usa el content script — que acabaría inyectando todo eso en cada página.
+import type { BackupError } from './backup';
 
 /**
  * Errores de la bóveda: los criptográficos más los de flujo de la aplicación.
@@ -63,6 +65,22 @@ export function describeAnyError(error: VaultError | BackupError): string {
     return describeBackupError(error);
   }
   return describeVaultError(error);
+}
+
+/** Mensaje de los errores propios del respaldo. Vive aquí para que `backup.ts` no se importe. */
+export function describeBackupError(error: BackupError): string {
+  switch (error.kind) {
+    case 'not-a-backup':
+      return error.detail;
+    case 'unsupported-backup-version':
+      return `Este respaldo usa el formato v${String(error.found)}, más nuevo que el que entiende esta versión de la extensión.`;
+    case 'wrong-password':
+      return 'La contraseña no abre este archivo de respaldo.';
+    case 'corrupt-data':
+      return 'El archivo de respaldo está dañado.';
+    case 'unsupported-version':
+      return 'Formato de respaldo no soportado.';
+  }
 }
 
 /** Mensaje para la UI. Nunca incluye material criptográfico ni contenido de la bóveda. */

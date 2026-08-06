@@ -23,6 +23,7 @@ import {
   wrongRecoveryCode,
 } from './errors';
 import { validateMasterPassword } from './masterPassword';
+import { findLoginsForUrl, hostOf, loginMatchesHost } from './urlMatch';
 import {
   type BackupError,
   type BackupFile,
@@ -53,6 +54,25 @@ export interface VaultSnapshot {
   readonly pendingMasterReset: boolean;
   /** La bóveda no tiene código de respaldo configurado (caso de migración desde v1). */
   readonly missingRecoveryCode: boolean;
+}
+
+/**
+ * Lo que el content script puede saber **antes** de que el usuario elija.
+ *
+ * Deliberadamente sin contraseña: esta lista se dibuja dentro de una página que no
+ * controlamos, así que no puede llevar nada que no estemos dispuestos a que esa página
+ * termine viendo. El título y el usuario bastan para elegir.
+ */
+export interface AutofillCandidate {
+  readonly id: string;
+  readonly title: string;
+  readonly username: string;
+}
+
+/** El secreto. Sólo se emite tras una elección explícita y con el origen ya verificado. */
+export interface AutofillCredential {
+  readonly username: string;
+  readonly password: string;
 }
 
 /** Un item nuevo: todo menos lo que genera el sistema. */
@@ -317,6 +337,60 @@ export class VaultService {
 
     await this.deps.repository.deleteItem(id);
     return ok(undefined);
+  }
+
+  // ── Autocompletado ────────────────────────────────────────────────────────────
+
+  /**
+   * Credenciales que aplican a una página. Sin secretos.
+   *
+   * `pageUrl` tiene que venir del `sender` que rellena el navegador, nunca de lo que
+   * afirme el content script: es lo único que impide que una página pida las credenciales
+   * de otra. Quien llama es responsable de esa procedencia; aquí ya se da por buena.
+   */
+  async autofillCandidates(
+    pageUrl: string,
+  ): Promise<Result<readonly AutofillCandidate[], VaultError>> {
+    const dek = await this.readDek();
+    if (dek === null) return err(locked());
+
+    const { items } = await this.deps.repository.loadAll(dek);
+    return ok(
+      findLoginsForUrl(items, pageUrl).map((item) => ({
+        id: item.id,
+        title: item.title,
+        username: item.username,
+      })),
+    );
+  }
+
+  /**
+   * La contraseña de una credencial concreta, para rellenarla en una página.
+   *
+   * El emparejamiento con el dominio se **vuelve a comprobar aquí**, en vez de fiarse de
+   * que el id venga de la lista que devolvió `autofillCandidates`. Entre una llamada y la
+   * otra no hay nada que ate al content script a esa lista: puede pedir cualquier id, y
+   * pedir el de la credencial del banco desde una página cualquiera es exactamente el
+   * ataque del que hay que defenderse.
+   *
+   * Si no casa se responde `item-not-found`, el mismo error que si no existiera. Que una
+   * página pueda distinguir «esa credencial existe pero no es para ti» de «no existe» ya
+   * sería filtrar parte de la bóveda.
+   */
+  async autofillCredential(
+    id: string,
+    pageUrl: string,
+  ): Promise<Result<AutofillCredential, VaultError>> {
+    const dek = await this.readDek();
+    if (dek === null) return err(locked());
+
+    const item = await this.deps.repository.readItem(dek, id);
+    if (!item.ok || item.value.type !== 'login') return err(itemNotFound(id));
+
+    const host = hostOf(pageUrl);
+    if (host === null || !loginMatchesHost(item.value, host)) return err(itemNotFound(id));
+
+    return ok({ username: item.value.username, password: item.value.password });
   }
 
   // ── Respaldo del contenido ────────────────────────────────────────────────────
