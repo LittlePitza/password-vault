@@ -1,0 +1,112 @@
+/*
+ * Tokens de color PIMSA — copia hex por hex de Mk/PALETA-PIMSA.md v1.0.
+ *
+ * Este archivo es la ÚNICA traducción del documento a código. Si la paleta cambia, se
+ * cambia aquí y en ningún otro sitio. Ningún componente escribe un hex: todos consumen
+ * los roles semánticos que theme.css deriva de estos tokens.
+ *
+ * Los valores están verificados contra la tabla de contraste de la sección 4 del
+ * documento; los ratios calculados coinciden con los publicados.
+ */
+
+:root {
+  /* ── Azules · estructura (matiz 213°) ─────────────────────────────────────── */
+  --pimsa-navy-900: #0e1b2e;
+  --pimsa-navy-700: #1d3552;
+  --pimsa-navy-500: #294466; /* Primario de marca */
+  --pimsa-blue-600: #064d79;
+  --pimsa-blue-400: #5d86b9; /* Sólo sobre navy-900 (4.59:1) */
+
+  /* ── Verdes · material (matiz 82°) ────────────────────────────────────────── */
+  --pimsa-green-800: #3a5318;
+  --pimsa-green-600: #5f7a2c; /* Verde para texto sobre claro, nunca bajo 16px */
+  --pimsa-green-500: #7f9d41; /* Acento de marca. CTA sobre oscuro */
+  --pimsa-green-300: #b0cd75;
+
+  /* ── Neutros · superficie y texto ─────────────────────────────────────────── */
+  --pimsa-paper: #f7f8f5; /* Fondo por defecto. Nunca blanco puro como página */
+  --pimsa-surface: #ffffff;
+  --pimsa-ink: #16202c; /* Texto de cuerpo. Nunca negro puro */
+  --pimsa-ink-muted: #5a6878;
+  --pimsa-line: #d8dee4; /* Divisores capilares. Decorativo: 1.27:1 */
+
+  /* ── Funcionales · fuera de marca, a propósito ────────────────────────────── */
+  --pimsa-red-600: #dc2626;
+  --pimsa-red-50: #fef2f2;
+
+  /*
+   * ── AÑADIDOS a la paleta v1.0 · pendientes de aprobación ──────────────────
+   *
+   * Estos tres valores NO están en el documento. Se añaden porque la interfaz los
+   * necesita y la paleta no cubre el caso. Siguen la misma lógica que la sección 6
+   * declara para el rojo: son funcionales y viven fuera de las dos familias de marca
+   * a propósito, para que una advertencia no se lea como decoración.
+   *
+   *  1. Advertencia. La paleta define error (rojo) pero no advertencia. Los avisos de
+   *     esta extensión ("no hay recuperación posible", "no guardes esto en OneDrive")
+   *     son serios pero no son errores: en rojo gritarían, en azul se perderían.
+   *  2. Rojo sobre oscuro. `red-600` da 3.58:1 sobre navy-900 y reprueba AA. Hace falta
+   *     una variante más clara para la banda oscura.
+   */
+  --pimsa-amber-700: #b45309; /* Advertencia sobre claro · 4.71:1 sobre paper */
+  --pimsa-amber-300: #fcd34d; /* Advertencia sobre oscuro · 11.99:1 sobre navy-900 */
+  --pimsa-red-400: #f87171; /* Error sobre oscuro · 6.25:1 sobre navy-900 */
+
+  /*
+   * ── Escala de noche · superficies del modo oscuro ─────────────────────────
+   *
+   * Tampoco está en el documento v1.0 y se añade con la regla generativa de la sección 1:
+   * «si necesitas un color nuevo, no lo inventes, sácalo de 213° o de 82°». Los cuatro son
+   * el azul de marca con la saturación muy baja y la luminosidad repartida entre el 4 % y
+   * el 17 %. A ojo, el más oscuro es negro; en la maquinaria sigue perteneciendo a 213°.
+   *
+   * ── Por qué casi negro y no `#0E1B2E` ─────────────────────────────────────
+   * La primera versión del modo oscuro usaba `navy-900` de fondo y `green-500` de acento.
+   * El verde de marca es un verde oliva y sobre un azul oscuro saturado se enturbia: los
+   * dos colores tiran del mismo rango medio y ninguno gana. Bajando el fondo a casi negro
+   * y **quitando el verde del acento** el problema desaparece de raíz.
+   *
+   * ── Por qué no `#000000` exacto ───────────────────────────────────────────
+   * El negro puro tiene dos problemas y ninguno es de gusto. En pantallas OLED el píxel
+   * apagado tarda en encender y el texto deja rastro al hacer scroll. Y en LCD, el negro
+   * puro contra texto blanco da un halo que cansa en sesiones largas. Los 5/6/8 de
+   * `night-950` evitan las dos cosas y son indistinguibles de negro salvo poniéndolos al
+   * lado. Por debajo del 3 % de luminosidad el matiz es nominal: nadie lo percibe, y el
+   * valor está elegido para leerse neutro.
+   *
+   * ── Por qué el salto grande entre 950 y 900 ───────────────────────────────
+   * El fondo y el panel tienen que distinguirse **a simple vista**, no por medición: la
+   * interfaz apoya el contenido en un panel redondeado que flota sobre el fondo, y si los
+   * dos tonos se parecen, el panel deja de existir. De 950 a 900 hay casi cuatro veces más
+   * luminosidad; de 900 a 800, sólo la justa para que el realce de una fila se note sin
+   * gritar.
+   */
+  --pimsa-night-950: #050608; /* Fondo · 18.6:1 con paper */
+  --pimsa-night-900: #111419; /* Panel y tarjetas · blue-400 encima da 4.92:1 */
+  --pimsa-night-800: #171b21; /* Elevado y realce de fila · blue-400 da 4.58:1 */
+  --pimsa-night-700: #242a33; /* Bordes y divisores */
+
+  /*
+   * ── Texto secundario y acento de la noche ─────────────────────────────────
+   *
+   * `slate-400` es 213° desaturado al 12 %: el gris que la paleta no tiene. Hace falta
+   * porque en modo noche el acento pasa a ser azul, y usar `blue-400` también para el
+   * texto secundario dejaría la interfaz sin distinguir lo que se puede pulsar de lo que
+   * sólo se lee.
+   *
+   * `blue-300` es el `blue-400` aclarado, para el estado hover del acento.
+   */
+  --pimsa-slate-400: #8a94a3; /* Texto secundario · 6.6:1 sobre night-950 */
+  --pimsa-blue-300: #8fb0dd; /* Azul claro sobre oscuro · 8.7:1 sobre night-950 */
+
+  /*
+   * ── green-200 · hover del acento en modo noche ────────────────────────────
+   *
+   * El acento de la noche es `green-300`, y un acento necesita un estado hover. Bajar a
+   * `green-500` sería lo intuitivo y es justo lo que no funciona aquí: sobre negro, el
+   * hover se apagaría en vez de encenderse, y el botón parecería desactivarse al pasar
+   * por encima. `green-200` es `green-300` con la luminosidad subida del 63 % al 75 %,
+   * mismo matiz (82°) y misma saturación.
+   */
+  --pimsa-green-200: #c7dca3; /* Hover del acento · 13.7:1 sobre night-950 */
+}

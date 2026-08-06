@@ -1,0 +1,48 @@
+/*
+ * Fuentes empaquetadas con la extensión.
+ *
+ * El sistema de diseño dice que Inter y JetBrains Mono van locales, y hasta ahora no lo
+ * estaban: `theme.css` las nombraba en la pila de fuentes pero nadie las cargaba, así que
+ * todo se dibujaba con la fuente del sistema. Esto lo arregla.
+ *
+ * ── Por qué no se importan desde Google Fonts ─────────────────────────────────
+ * Una petición a `fonts.googleapis.com` al abrir el popup delata que la extensión está en
+ * uso y desde qué IP. Este producto no hace **ninguna** petición de red, y ésa no iba a
+ * ser la primera. Los `.woff2` vienen de los paquetes `@fontsource-variable/*` y Vite los
+ * emite como recurso de la propia extensión.
+ *
+ * ── Por qué sólo el subconjunto `latin` ───────────────────────────────────────
+ * Los paquetes traen siete subconjuntos por familia (cirílico, griego, vietnamita…). El
+ * `latin-ext` solo pesa 85 kB y cubre alfabetos que esta interfaz en español no escribe.
+ * Con `latin` bastan 88 kB para las dos familias. Un glifo que no esté en el archivo cae
+ * a la fuente del sistema carácter a carácter, que es el comportamiento normal del
+ * navegador y no rompe nada.
+ *
+ * ── Por qué `font-display: block` y no `swap` ─────────────────────────────────
+ * `swap` dibujaría el popup con la fuente del sistema y la cambiaría a media apertura: un
+ * parpadeo tipográfico cada vez que se abre. Al ser un archivo local que se lee de disco,
+ * el bloqueo dura lo que tarda esa lectura y no hay parpadeo que ver.
+ *
+ * No llevan `unicode-range` a propósito: sólo sirve para que el navegador se ahorre
+ * descargas cuando hay varios subconjuntos, y aquí sólo hay uno por familia. Sin él, el
+ * navegador usa la fuente para lo que cubre y cae al sistema para lo demás — el mismo
+ * resultado con una cosa menos que se pueda quedar desfasada.
+ */
+
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')
+    format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: block;
+  src: url('@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2')
+    format('woff2-variations');
+}

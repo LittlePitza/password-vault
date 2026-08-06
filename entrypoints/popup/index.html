@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Password Vault</title>
+    <!--
+      Sin `defer` ni `type="module"` a propósito: tiene que ejecutarse antes del primer
+      pintado o el popup enseña un fogonazo blanco al abrirse en modo noche.
+    -->
+    <script src="/theme-boot.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

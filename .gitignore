@@ -1,0 +1,12 @@
+node_modules/
+.output/
+.wxt/
+stats.html
+stats-*.json
+*.log
+.DS_Store
+test-results/
+playwright-report/
+
+# Rutas de binarios propias de cada máquina (ver web-ext.config.ts)
+web-ext.config.ts

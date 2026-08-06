@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="PIMSA Password Vault">
+  <!-- Generado por scripts/generate-icons.mjs. No editar a mano. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0e1b2e"/>
+      <stop offset="1" stop-color="#090a0c"/>
+    </linearGradient>
+    <linearGradient id="key" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b0cd75"/>
+      <stop offset="1" stop-color="#7f9d41"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28.80" fill="url(#bg)"/>
+  <path fill="url(#key)" d="M 58.50 60.80 L 51.20 97.28 L 76.80 97.28 L 69.50 60.80 Z"/>
+  <circle cx="64.00" cy="51.20" r="19.46" fill="url(#key)"/>
+</svg>

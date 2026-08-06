@@ -1,0 +1,22 @@
+{
+  // WXT genera .wxt/tsconfig.json con lib/paths/strict y ya trae noUncheckedIndexedAccess,
+  // noImplicitOverride, noFallthroughCasesInSwitch y verbatimModuleSyntax.
+  // Aquí sólo se añade lo que falta.
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+
+    // Distingue `{ a?: number }` de `{ a: number | undefined }`. Importante en el modelo
+    // de la bóveda: un campo opcional ausente no es lo mismo que uno puesto a undefined.
+    "exactOptionalPropertyTypes": true,
+
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "types": ["chrome", "node", "vitest/globals"]
+  },
+  "include": [".wxt/tsconfig.json", "**/*.ts", "**/*.tsx", ".wxt/wxt.d.ts"],
+  "exclude": ["node_modules", ".output"]
+}
