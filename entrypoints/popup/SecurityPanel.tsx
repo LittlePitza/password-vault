@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Download,
   KeyRound,
+  Lock,
   Upload,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -14,15 +15,24 @@ import { describeAnyError } from '@/src/core/vault/errors';
 import { Button } from '@/src/ui/components/Button';
 import { PasswordField } from '@/src/ui/components/PasswordField';
 import { RecoveryCodeCard } from '@/src/ui/components/RecoveryCodeCard';
+import { ChangeMasterPasswordForm } from './ChangeMasterPasswordForm';
 
-interface BackupPanelProps {
+interface SecurityPanelProps {
   readonly onBack: () => void;
   readonly missingRecoveryCode: boolean;
 }
 
-type Mode = 'menu' | 'export' | 'import' | 'new-code';
+type Mode = 'menu' | 'change-password' | 'export' | 'import' | 'new-code';
 
-export function BackupPanel({ onBack, missingRecoveryCode }: BackupPanelProps) {
+/**
+ * Todo lo que gobierna el acceso a la bóveda, en un solo sitio.
+ *
+ * Contraseña maestra, código de respaldo y archivo de exportación son tres respuestas a la
+ * misma pregunta —«¿cómo vuelvo a entrar?»— y separarlas en menús distintos obligaría a
+ * saber de antemano cuál de las tres se necesita. Es justo lo que no sabe quien viene
+ * buscando ayuda.
+ */
+export function SecurityPanel({ onBack, missingRecoveryCode }: SecurityPanelProps) {
   const [mode, setMode] = useState<Mode>('menu');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -145,9 +155,17 @@ export function BackupPanel({ onBack, missingRecoveryCode }: BackupPanelProps) {
         Volver
       </button>
 
+      {mode === 'change-password' && (
+        <ChangeMasterPasswordForm
+          onDone={() => {
+            reset('menu');
+          }}
+        />
+      )}
+
       {mode === 'menu' && (
         <div className="flex flex-col gap-3">
-          <h1 className="animate-rise-in text-lg font-semibold">Respaldo</h1>
+          <h1 className="animate-rise-in text-lg font-semibold">Seguridad</h1>
 
           {missingRecoveryCode && (
             <p className="flex animate-rise-in items-start gap-2 rounded-xl border border-warn/30 bg-warn/5 p-3 text-xs text-warn">
@@ -158,8 +176,17 @@ export function BackupPanel({ onBack, missingRecoveryCode }: BackupPanelProps) {
           )}
 
           <MenuButton
-            icon={Download}
+            icon={Lock}
             delay={60}
+            title="Cambiar contraseña maestra"
+            description="Necesitas la actual. El contenido no se vuelve a cifrar y el código de respaldo sigue valiendo."
+            onClick={() => {
+              reset('change-password');
+            }}
+          />
+          <MenuButton
+            icon={Download}
+            delay={120}
             title="Exportar a un archivo"
             description="Copia cifrada de todo el contenido. Es lo único que salva los datos si se pierde el equipo."
             onClick={() => {
@@ -168,7 +195,7 @@ export function BackupPanel({ onBack, missingRecoveryCode }: BackupPanelProps) {
           />
           <MenuButton
             icon={Upload}
-            delay={120}
+            delay={180}
             title="Importar un respaldo"
             description="Fusiona con lo que ya tienes. Reimportar el mismo archivo no duplica nada."
             onClick={() => {
@@ -177,7 +204,7 @@ export function BackupPanel({ onBack, missingRecoveryCode }: BackupPanelProps) {
           />
           <MenuButton
             icon={KeyRound}
-            delay={180}
+            delay={240}
             title={missingRecoveryCode ? 'Generar código de respaldo' : 'Regenerar código'}
             description="Invalida el anterior. Úsalo si crees que se filtró o si acabas de recuperar con él."
             onClick={() => void handleRotate()}

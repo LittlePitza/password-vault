@@ -20,7 +20,7 @@ interface VaultListProps {
   readonly missingRecoveryCode: boolean;
   readonly onOpen: (id: string) => void;
   readonly onCreate: () => void;
-  readonly onBackup: () => void;
+  readonly onSecurity: () => void;
   readonly onLock: () => void;
 }
 
@@ -51,7 +51,7 @@ export function VaultList({
   missingRecoveryCode,
   onOpen,
   onCreate,
-  onBackup,
+  onSecurity,
   onLock,
 }: VaultListProps) {
   const [query, setQuery] = useState('');
@@ -219,7 +219,7 @@ export function VaultList({
           entera.
         */}
         <footer className="flex items-center gap-2 border-t border-border/60 px-3 py-2.5">
-          <IconButton label="Respaldo y recuperación" onClick={onBackup}>
+          <IconButton label="Seguridad y respaldo" onClick={onSecurity}>
             <LifeBuoy className="size-4" aria-hidden />
           </IconButton>
 

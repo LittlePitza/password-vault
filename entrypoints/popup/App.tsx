@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { browser } from 'wxt/browser';
-import { ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ShieldCheck } from 'lucide-react';
 import { send } from '@/src/messaging/client';
 import type { VaultItem } from '@/src/core/model/item';
 import type { VaultSnapshot } from '@/src/core/vault/vaultService';
@@ -10,7 +10,7 @@ import { Button } from '@/src/ui/components/Button';
 import { Emblem } from '@/src/ui/components/Emblem';
 import { UnlockScreen } from './UnlockScreen';
 import { RecoveryScreen } from './RecoveryScreen';
-import { BackupPanel } from './BackupPanel';
+import { SecurityPanel } from './SecurityPanel';
 import { VaultList } from './VaultList';
 import { ItemDetail } from './ItemDetail';
 import { ItemForm } from './ItemForm';
@@ -26,13 +26,38 @@ type View =
   | { readonly name: 'list' }
   | { readonly name: 'detail'; readonly id: string }
   | { readonly name: 'form'; readonly existing: VaultItem | null }
-  | { readonly name: 'backup' };
+  | { readonly name: 'security' };
 
 const LIST: View = { name: 'list' };
 
 export function App() {
-  const { snapshot, refresh } = useVaultSnapshot();
+  const { snapshot, error, refresh } = useVaultSnapshot();
   const [recovering, setRecovering] = useState(false);
+
+  if (snapshot === null && error !== null) {
+    /*
+     * No se pudo hablar con el service worker y no hay nada que enseñar. Sin esta rama
+     * quedaría el esqueleto de abajo girando indefinidamente: la pantalla diría «estoy
+     * cargando» cuando en realidad ya se rindió, que es la peor de las dos mentiras.
+     */
+    return (
+      <Shell>
+        <div className="ambient flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+          <Emblem icon={AlertTriangle} tone="warn" />
+          <div className="flex animate-rise-in flex-col gap-1.5 [animation-delay:80ms]">
+            <h1 className="text-lg font-semibold">No se pudo abrir la bóveda</h1>
+            <p className="text-sm text-dim">{error}</p>
+          </div>
+          <Button
+            className="animate-rise-in [animation-delay:140ms]"
+            onClick={() => void refresh()}
+          >
+            Reintentar
+          </Button>
+        </div>
+      </Shell>
+    );
+  }
 
   if (snapshot === null) {
     /*
@@ -169,9 +194,9 @@ function UnlockedVault({
     case 'form':
       return <ItemForm existing={view.existing} onCancel={backToList} onSaved={backAndRefresh} />;
 
-    case 'backup':
+    case 'security':
       return (
-        <BackupPanel missingRecoveryCode={snapshot.missingRecoveryCode} onBack={backAndRefresh} />
+        <SecurityPanel missingRecoveryCode={snapshot.missingRecoveryCode} onBack={backAndRefresh} />
       );
 
     case 'list':
@@ -186,8 +211,8 @@ function UnlockedVault({
           onCreate={() => {
             go({ name: 'form', existing: null });
           }}
-          onBackup={() => {
-            go({ name: 'backup' });
+          onSecurity={() => {
+            go({ name: 'security' });
           }}
           onLock={() => {
             void (async () => {
