@@ -3,7 +3,7 @@ import { VaultRepository } from '@/src/core/vault/vaultRepository';
 import { VaultService } from '@/src/core/vault/vaultService';
 import { cryptoIdGenerator, systemClock } from '@/src/core/ports';
 import { corruptData } from '@/src/core/crypto/errors';
-import type { VaultError } from '@/src/core/vault/errors';
+import { type VaultError, unexpected } from '@/src/core/vault/errors';
 import type { BackupError } from '@/src/core/vault/backup';
 import { BrowserVaultStorage } from '@/src/platform/browserStorage';
 import { BrowserSessionStore } from '@/src/platform/browserSession';
@@ -57,7 +57,16 @@ export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
     // Se responde de forma asíncrona: hay que devolver `true` para que el canal siga
     // abierto hasta que llegue `sendResponse`.
-    void route(message).then(sendResponse);
+    //
+    // El `catch` es una red de seguridad, no el manejo principal: `route` ya captura lo
+    // suyo. Está aquí para garantizar por construcción que **toda** rama termina llamando
+    // a `sendResponse`, incluso si un día se cuela un fallo antes de ese `try`.
+    void route(message)
+      .then(sendResponse)
+      .catch((cause: unknown) => {
+        console.error('[vault] fallo al enrutar el mensaje', cause);
+        sendResponse(failure(unexpected(cause)));
+      });
     return true;
   });
 });
@@ -70,13 +79,35 @@ async function route(message: unknown): Promise<AnyResponse> {
     return failure(corruptData('mensaje con forma inválida'));
   }
 
-  const response = await handle(parsed.data);
+  let response: AnyResponse;
+  try {
+    response = await handle(parsed.data);
+  } catch (cause) {
+    /*
+     * Un caso de uso lanzó en vez de devolver su `Result`: cuota de `storage.local`
+     * agotada, el almacenamiento caído, un fallo del navegador.
+     *
+     * Sin este `catch` la promesa se propagaría, `sendResponse` no llegaría a llamarse
+     * nunca y el popup se quedaría esperando indefinidamente — el mismo síntoma que
+     * "la extensión no hace nada al pulsar". Convertirlo en valor lo hace visible.
+     */
+    console.error('[vault] fallo no previsto en', parsed.data.type, cause);
+    response = failure(unexpected(cause));
+  }
 
-  // Cualquier actividad legítima reinicia la cuenta atrás del auto-bloqueo.
-  if (await service.isUnlocked()) {
+  // Cualquier actividad legítima reinicia la cuenta atrás del auto-bloqueo. Va en su
+  // propio `try`: que la operación fallara no es motivo para dejar la bóveda sin plazo.
+  try {
+    if (await service.isUnlocked()) {
+      scheduleAutoLock(DEFAULT_AUTO_LOCK_MINUTES);
+    } else {
+      cancelAutoLock();
+    }
+  } catch (cause) {
+    // Si no se puede ni consultar el estado, se programa el bloqueo igualmente. Ante la
+    // duda, cerrar: una alarma de más no cuesta nada, una bóveda abierta sin plazo sí.
+    console.error('[vault] no se pudo consultar el estado; se programa el bloqueo', cause);
     scheduleAutoLock(DEFAULT_AUTO_LOCK_MINUTES);
-  } else {
-    cancelAutoLock();
   }
 
   return response;

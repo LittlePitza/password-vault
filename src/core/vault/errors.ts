@@ -14,7 +14,19 @@ export type VaultError =
   | { readonly kind: 'already-initialized' }
   | { readonly kind: 'item-not-found'; readonly id: string }
   | { readonly kind: 'weak-master-password'; readonly reason: string }
-  | { readonly kind: 'wrong-recovery-code' };
+  | { readonly kind: 'wrong-recovery-code' }
+  /**
+   * Fallo que ningún caso de uso previó: cuota de almacenamiento agotada, el canal de
+   * mensajes caído, una excepción inesperada del navegador.
+   *
+   * Existe para que un fallo así siga siendo un **valor** y no una promesa rechazada. Sin
+   * esta variante, una excepción en el service worker deja al popup esperando una
+   * respuesta que no llega nunca — y un popup congelado es peor que un mensaje de error.
+   *
+   * `detail` es para diagnóstico y no se muestra: una excepción arbitraria podría
+   * arrastrar contenido de la bóveda en su mensaje.
+   */
+  | { readonly kind: 'unexpected'; readonly detail: string };
 
 export const locked = (): VaultError => ({ kind: 'locked' });
 export const notInitialized = (): VaultError => ({ kind: 'not-initialized' });
@@ -25,6 +37,17 @@ export const weakMasterPassword = (reason: string): VaultError => ({
   reason,
 });
 export const wrongRecoveryCode = (): VaultError => ({ kind: 'wrong-recovery-code' });
+
+/**
+ * Envuelve lo que se haya capturado en un `catch`.
+ *
+ * Acepta `unknown` porque en JavaScript se puede lanzar cualquier cosa, no sólo `Error`.
+ * El texto se trunca: sólo sirve para diagnosticar en la consola.
+ */
+export const unexpected = (cause: unknown): VaultError => ({
+  kind: 'unexpected',
+  detail: (cause instanceof Error ? cause.message : String(cause)).slice(0, 200),
+});
 
 /**
  * Traduce cualquier error que pueda llegar por el canal de mensajes.
@@ -57,6 +80,10 @@ export function describeVaultError(error: VaultError): string {
       return error.reason;
     case 'wrong-recovery-code':
       return 'Ese código de respaldo no es válido para esta bóveda.';
+    case 'unexpected':
+      // Genérico a propósito: `detail` puede traer el mensaje de una excepción
+      // cualquiera, y eso no se enseña. Queda en la consola del service worker.
+      return 'Algo falló dentro de la extensión y la operación no se completó. Vuelve a intentarlo.';
     case 'wrong-password':
     case 'corrupt-data':
     case 'unsupported-version':
